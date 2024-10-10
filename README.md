@@ -1,6 +1,16 @@
 # Elasticsearch
 
-Download Employee Data set from https://www.kaggle.com/datasets/williamlucas0/employee-sample-data
+
+ Installation Instructions
+
+a) Read about Elasticsearch: Getting Started with Elasticsearch.
+
+b) Install Elasticsearch on your local machine.
+
+c) Start the service in 8989 port instead of the default port
+
+
+d)Download Employee Data set from https://www.kaggle.com/datasets/williamlucas0/employee-sample-data
 
 · Function Definitions
 
