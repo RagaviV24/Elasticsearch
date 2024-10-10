@@ -1,0 +1,166 @@
+from elasticsearch import Elasticsearch, exceptions
+import time
+import urllib3
+import pandas as pd  
+
+
+urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
+
+es = Elasticsearch(
+    "https://localhost:8989",
+    basic_auth=('elastic', 'aMFBgh6qaxelv3c2YrTG'),  
+    verify_certs=False  
+)
+
+v_nameCollection = "hash_ragavi"  
+v_phoneCollection = "hash_8123"    
+
+employees = pd.read_csv(r'C:\Users\RAGAVI\OneDrive\Desktop\elasticsearch\Employee Sample Data 1.csv', encoding='ISO-8859-1').to_dict(orient='records')
+
+# A) Function to create indices
+def createCollection(collection_name):  
+    try:
+        es.indices.create(index=collection_name, ignore=400)  
+        print(f"Collection '{collection_name}' created.")
+    except exceptions.BadRequestError as e:
+        print(f"Error creating index {collection_name}: {e}")
+
+# B) Function to index employee records
+def indexData(collection_name, exclude_column):  
+    for record in employees:  
+        print("Current Record:", record)  
+
+        if not employee_id:  
+            print(f"Skipping record, 'Employee ID' not found: {record}")
+            continue  
+        
+        
+        record_excluded = {k: v for k, v in record.items() if k != exclude_column}
+        try:
+            es.index(index=collection_name, id=employee_id, document=record_excluded)
+            print(f"Indexed record '{record['Full Name']}' successfully.")
+        except exceptions.BadRequestError as e:
+            print(f"Error indexing record '{record['Full Name']}': {e}")
+
+# C) Function to search by a specific column and value
+def searchByColumn(collection_name, column_name, column_value):  
+    try:
+        query = {
+            "query": {
+                "match": {column_name: column_value}
+            }
+        }
+        response = es.search(index=collection_name, body=query)
+        return response['hits']['hits']
+    except exceptions.NotFoundError:
+        print(f"Error: Index '{collection_name}' not found.")
+        return None
+    except Exception as e:
+        print(f"Error searching by column: {e}")
+        return None
+
+# D) Function to get the count of employees in a collection (index)
+def getEmpCount(collection_name):  
+    try:
+        return es.count(index=collection_name)['count']
+    except exceptions.NotFoundError:
+        print(f"Error: Index '{collection_name}' not found.")
+        return None
+    except Exception as e:
+        print(f"Error getting employee count: {e}")
+        return None
+
+# E) Function to delete an employee by ID
+def delEmpById(collection_name, employee_id): 
+    try:
+        es.delete(index=collection_name, id=employee_id)
+        print(f"Employee with ID '{employee_id}' deleted from '{collection_name}'.")
+    except exceptions.NotFoundError:
+        print(f"Error: Employee ID '{employee_id}' not found in '{collection_name}'.")
+    except Exception as e:
+        print(f"Error deleting employee: {e}")
+
+# F) Function to get department facet
+def getDepFacet(collection_name): 
+    try:
+        query = {
+            "aggs": {
+                "departments": {
+                    "terms": {
+                        "field": "Department.keyword"  
+                    }
+                }
+            },
+            "size": 0
+        }
+        response = es.search(index=collection_name, body=query)
+        return response['aggregations']['departments']['buckets']
+    except exceptions.NotFoundError:
+        print(f"Error: Index '{collection_name}' not found.")
+        return None
+    except Exception as e:
+        print(f"Error getting department facet: {e}")
+        return None
+
+
+# Main program
+if __name__ == "__main__":
+    
+    # Step a: Define collection names
+    v_nameCollection = "hash_ragavi"  
+    v_phoneCollection = "hash_8123"    
+
+    # Step b: Create collections
+    createCollection(v_nameCollection)
+    time.sleep(2)  
+    createCollection(v_phoneCollection)
+    time.sleep(2)
+
+    # Step c: Get employee count
+    emp_count_name = getEmpCount(v_nameCollection)
+    print(f"Employee count in '{v_nameCollection}': {emp_count_name}")
+
+    # Step d: Index data into v_nameCollection, excluding 'Department'
+    indexData(v_nameCollection, 'Department')  
+    time.sleep(2)
+
+    # Step e: Index data into v_phoneCollection, excluding 'Gender'
+    indexData(v_phoneCollection, 'Gender')  
+    time.sleep(2)
+
+    # Step f: Get employee count again
+    emp_count_name = getEmpCount(v_nameCollection)
+    print(f"Updated employee count in '{v_nameCollection}': {emp_count_name}")
+
+    # Step g: Delete employee by ID
+    delEmpById(v_nameCollection, 'E02003')  
+    time.sleep(2)
+
+    # Step h: Get employee count after deletion
+    emp_count_name = getEmpCount(v_nameCollection)
+    print(f"Employee count in '{v_nameCollection}' after deletion: {emp_count_name}")
+
+    # Step i: Search by Department
+    search_results_k = searchByColumn(v_nameCollection, 'Department', 'IT')
+    print(f"Search results for Department 'IT': {search_results_k}")
+
+    # Step j: Search by Gender
+    search_results_l = searchByColumn(v_nameCollection, 'Gender', 'Male') 
+    print(f"Search results for Gender 'Male': {search_results_l}")
+
+    # Step k: Search by Department in phone collection
+    search_results_m = searchByColumn(v_phoneCollection, 'Department', 'IT')
+    print(f"Search results for Department 'IT' in phone collection: {search_results_m}")
+
+    # Step l: Get department facet for name collection
+    dep_facet_n = getDepFacet(v_nameCollection)
+    print(f"Department facet for '{v_nameCollection}': {dep_facet_n}")
+
+    # Step m: Get department facet for phone collection
+    dep_facet_o = getDepFacet(v_phoneCollection)
+    print(f"Department facet for '{v_phoneCollection}': {dep_facet_o}")
+
+
+    # Step o: Get department facet for phone collection
+    dep_facet_o = getDepFacet(v_phoneCollection)
+    print(f"Department facet for '{v_phoneCollection}': {dep_facet_o}")
